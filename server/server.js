@@ -4,9 +4,42 @@ const path = require("path");
 const db = require("./config/connection");
 const resolvers = require("./schemas/resolvers");
 const typeDefs = require("./schemas/typeDefs");
+
+const jwt = require("jsonwebtoken");
+
+// set token secret and expiration date
+const secret = "mysecretssshhhh";
+const expiration = "2h";
+
 const server = new ApolloServer({
   typeDefs: typeDefs,
   resolvers: resolvers,
+  context: ({ req }) => {
+    //allows token to be sent via req.query or headers
+    let token = req.query.token || req.headers.authorization;
+
+    // ["Bearer", "<tokenvalue>"]
+    if (req.headers.authorization) {
+      token = token.split(" ").pop().trim();
+    }
+
+    if (!token) {
+      console.log("returning null");
+      return null;
+      //return res.status(400).json({ message: 'You have no token!'});
+    }
+
+    // verify token and get user data out of it
+    try {
+      const { data } = jwt.verify(token, secret, { maxAge: expiration });
+      console.log("FOUND USER within the context!", data);
+      return data;
+    } catch {
+      console.log("Invalid token");
+      return null;
+      //return res.status(400).json({ message: 'You have no token!'});
+    }
+  },
 });
 
 const app = express();
